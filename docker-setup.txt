@@ -1,0 +1,41 @@
+# Dockerfile
+FROM node:18-alpine as base
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the application
+FROM base as build
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine as production
+WORKDIR /usr/src/app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Copy built app
+COPY --from=build /usr/src/app/dist ./dist
+COPY --from=build /usr/src/app/public ./public
+
+# Set NODE_ENV to production
+ENV NODE_ENV=production
+
+# Expose port
+EXPOSE 5000
+
+# Start the app
+CMD ["node", "dist/server.js"]
